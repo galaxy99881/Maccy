@@ -119,6 +119,10 @@ class History: ItemsContainer { // swiftlint:disable:this type_body_length
 
   @MainActor
   private func limitHistorySize(to maxSize: Int) {
+    // A history size of 0 means unlimited. Keep this sentinel out of the
+    // collection slicing below, where it would otherwise delete everything.
+    guard maxSize > 0 else { return }
+
     let unpinned = all.filter(\.isUnpinned)
     if unpinned.count >= maxSize {
       unpinned[maxSize...].forEach(delete)

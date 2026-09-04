@@ -62,6 +62,13 @@ struct StorageSettingsPane: View {
   @State private var viewModel = ViewModel()
   @State private var storageSize = Storage.shared.size
 
+  private var unlimitedHistory: Binding<Bool> {
+    Binding(
+      get: { size == 0 },
+      set: { size = $0 ? 0 : 200 }
+    )
+  }
+
   private let sizeFormatter: NumberFormatter = {
     let formatter = NumberFormatter()
     formatter.minimum = 1
@@ -96,11 +103,18 @@ struct StorageSettingsPane: View {
         HStack {
           TextField("", value: $size, formatter: sizeFormatter)
             .frame(width: 80)
+            .disabled(unlimitedHistory.wrappedValue)
             .help(Text("SizeTooltip", tableName: "StorageSettings"))
             .accessibilityLabel(Text("Size", tableName: "StorageSettings"))
           Stepper("", value: $size, in: 1...999)
             .labelsHidden()
+            .disabled(unlimitedHistory.wrappedValue)
             .accessibilityLabel(Text("Size", tableName: "StorageSettings"))
+          Toggle(isOn: unlimitedHistory) {
+            Text("Unlimited", tableName: "StorageSettings")
+          }
+          .toggleStyle(.checkbox)
+          .help(Text("UnlimitedTooltip", tableName: "StorageSettings"))
           Text(storageSize)
             .controlSize(.small)
             .foregroundStyle(.gray)

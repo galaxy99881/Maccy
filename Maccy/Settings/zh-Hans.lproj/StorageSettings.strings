@@ -6,6 +6,8 @@
 "SaveDescription" = "设置何种类型的内容会被保存。";
 "Size" = "数量：";
 "SizeTooltip" = "保留条历史记录。\n默认: 200。";
+"Unlimited" = "无限";
+"UnlimitedTooltip" = "保留全部剪贴板历史。长期使用可能增加内存、磁盘占用和搜索延迟。";
 "CurrentSizeTooltip" = "磁盘上的当前大小。";
 "SortBy" = "排序方式：";
 "LastCopiedAt" = "上次复制时间";

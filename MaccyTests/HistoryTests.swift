@@ -277,6 +277,16 @@ class HistoryTests: XCTestCase { // swiftlint:disable:this type_body_length
     XCTAssertFalse(history.items.contains(items[5]))
   }
 
+  func testUnlimitedHistoryDoesNotRemoveItems() {
+    Defaults[.size] = 0
+
+    for index in 0..<1_100 {
+      history.add(historyItem(String(index)))
+    }
+
+    XCTAssertEqual(history.items.count, 1_100)
+  }
+
   func testReaddingBottomMostPinnedItemAtFullCapacity() {
     // Regression test for a crash when re-copying (invoking) the bottom-most
     // pinned item while history is at full capacity and pins are sorted to the
