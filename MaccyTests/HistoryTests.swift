@@ -341,6 +341,40 @@ class HistoryTests: XCTestCase { // swiftlint:disable:this type_body_length
     try assertStorageCounts(items: 1, contents: 1)
   }
 
+  func testRemovingImagesKeepsMixedPlainTextAndDeletesImageOnlyItems() throws {
+    let mixed = historyItem("keep")
+    mixed.contents.append(HistoryItemContent(type: NSPasteboard.PasteboardType.png.rawValue, value: Data([1])))
+    let imageOnly = HistoryItem(contents: [
+      HistoryItemContent(type: NSPasteboard.PasteboardType.tiff.rawValue, value: Data([2]))
+    ])
+    Storage.shared.context.insert(imageOnly)
+    try Storage.shared.context.save()
+
+    let result = try Storage.shared.cleanupHistory(.images)
+
+    XCTAssertEqual(result.affectedItems, 2)
+    XCTAssertEqual(result.deletedItems, 1)
+    XCTAssertEqual(mixed.contents.map(\.type), [NSPasteboard.PasteboardType.string.rawValue])
+    try assertStorageCounts(items: 1, contents: 1)
+  }
+
+  func testKeepingPlainTextRemovesOtherFormatsAndDeletesItemsWithoutText() throws {
+    let mixed = historyItem("keep")
+    mixed.contents.append(HistoryItemContent(type: NSPasteboard.PasteboardType.html.rawValue, value: Data([1])))
+    let richOnly = HistoryItem(contents: [
+      HistoryItemContent(type: NSPasteboard.PasteboardType.rtf.rawValue, value: Data([2]))
+    ])
+    Storage.shared.context.insert(richOnly)
+    try Storage.shared.context.save()
+
+    let result = try Storage.shared.cleanupHistory(.nonPlainText)
+
+    XCTAssertEqual(result.affectedItems, 2)
+    XCTAssertEqual(result.deletedItems, 1)
+    XCTAssertEqual(mixed.contents.map(\.type), [NSPasteboard.PasteboardType.string.rawValue])
+    try assertStorageCounts(items: 1, contents: 1)
+  }
+
   private func assertStorageCounts(
     items: Int,
     contents: Int,

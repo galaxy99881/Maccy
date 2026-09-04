@@ -29,3 +29,13 @@
 "BackupCannotCreateSnapshot" = "A consistent database snapshot could not be created.";
 "BackupInvalidDatabase" = "The selected backup does not contain a valid Maccy database.";
 "BackupUnsupportedFormat" = "This Maccy backup format is not supported.";
+"Cleanup" = "Cleanup:";
+"RemoveImages" = "Remove All Images…";
+"KeepPlainTextOnly" = "Keep Plain Text Only…";
+"CleanupDescription" = "Permanent cleanup can reduce memory spikes and lag when browsing old history. Export a complete backup first. Mixed entries keep their plain text; entries without plain text are deleted.";
+"CleanupConfirmationTitle" = "Back up all history before cleaning";
+"CleanupConfirmationMessage" = "This permanently changes the current history and cannot be undone. Export a complete backup first. Image cleanup removes image data; plain-text cleanup also removes files, HTML, RTF, and other formats.";
+"ExportBackupFirst" = "Export Backup First…";
+"CleanNow" = "I Have a Backup — Clean Now";
+"CleanupCompleted" = "History cleanup completed";
+"CleanupCompletedMessage" = "Affected %ld entries, deleted %ld entries without plain text, and removed %ld stored content objects.";

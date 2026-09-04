@@ -63,6 +63,7 @@ struct StorageSettingsPane: View {
 
   @State private var viewModel = ViewModel()
   @State private var storageSize = Storage.shared.size
+  @State private var isCleaning = false
 
   private var unlimitedHistory: Binding<Bool> {
     Binding(
@@ -162,6 +163,27 @@ struct StorageSettingsPane: View {
           .controlSize(.small)
           .foregroundStyle(.gray)
       }
+
+      Settings.Section(label: { Text("Cleanup", tableName: "StorageSettings") }) {
+        HStack {
+          Button {
+            confirmCleanup(.images)
+          } label: {
+            Text("RemoveImages", tableName: "StorageSettings")
+          }
+          .disabled(isCleaning)
+
+          Button {
+            confirmCleanup(.nonPlainText)
+          } label: {
+            Text("KeepPlainTextOnly", tableName: "StorageSettings")
+          }
+          .disabled(isCleaning)
+        }
+        Text("CleanupDescription", tableName: "StorageSettings")
+          .controlSize(.small)
+          .foregroundStyle(.gray)
+      }
     }
   }
 
@@ -200,6 +222,44 @@ struct StorageSettingsPane: View {
     } catch {
       NSAlert(error: error).runModal()
     }
+  }
+
+  private func confirmCleanup(_ kind: Storage.CleanupKind) {
+    let alert = NSAlert()
+    alert.messageText = NSLocalizedString("CleanupConfirmationTitle", tableName: "StorageSettings", comment: "")
+    alert.informativeText = NSLocalizedString("CleanupConfirmationMessage", tableName: "StorageSettings", comment: "")
+    alert.alertStyle = .critical
+    alert.addButton(withTitle: NSLocalizedString("ExportBackupFirst", tableName: "StorageSettings", comment: ""))
+    alert.addButton(withTitle: NSLocalizedString("CleanNow", tableName: "StorageSettings", comment: ""))
+    alert.addButton(withTitle: NSLocalizedString("Cancel", tableName: "StorageSettings", comment: ""))
+
+    switch alert.runModal() {
+    case .alertFirstButtonReturn:
+      exportBackup()
+    case .alertSecondButtonReturn:
+      performCleanup(kind)
+    default:
+      break
+    }
+  }
+
+  private func performCleanup(_ kind: Storage.CleanupKind) {
+    isCleaning = true
+    do {
+      let result = try Storage.shared.cleanupHistory(kind)
+      storageSize = Storage.shared.size
+      Task { @MainActor in
+        try? await AppState.shared.history.load()
+      }
+      let format = NSLocalizedString("CleanupCompletedMessage", tableName: "StorageSettings", comment: "")
+      showAlert(
+        title: NSLocalizedString("CleanupCompleted", tableName: "StorageSettings", comment: ""),
+        message: String(format: format, result.affectedItems, result.deletedItems, result.removedContents)
+      )
+    } catch {
+      NSAlert(error: error).runModal()
+    }
+    isCleaning = false
   }
 
   private func showAlert(title: String, message: String) {

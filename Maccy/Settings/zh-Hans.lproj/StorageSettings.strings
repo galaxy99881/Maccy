@@ -29,3 +29,13 @@
 "BackupCannotCreateSnapshot" = "无法创建一致的数据库快照。";
 "BackupInvalidDatabase" = "所选备份不包含有效的 Maccy 数据库。";
 "BackupUnsupportedFormat" = "不支持此 Maccy 备份格式。";
+"Cleanup" = "清理：";
+"RemoveImages" = "清除全部图片…";
+"KeepPlainTextOnly" = "仅保留纯文本…";
+"CleanupDescription" = "永久清理可减少浏览旧记录时的内存峰值和卡顿。请先导出完整备份。混合记录会保留纯文本，没有纯文本的记录将被删除。";
+"CleanupConfirmationTitle" = "清理前请先备份全部历史";
+"CleanupConfirmationMessage" = "此操作会永久修改当前历史，无法撤销。请先导出完整备份。图片清理会移除图片数据；纯文本清理还会移除文件、HTML、RTF 及其他格式。";
+"ExportBackupFirst" = "先导出备份…";
+"CleanNow" = "已有备份—立即清理";
+"CleanupCompleted" = "历史清理完成";
+"CleanupCompletedMessage" = "已影响 %ld 条记录，删除 %ld 条没有纯文本的记录，并移除 %ld 个已存储内容对象。";

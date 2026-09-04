@@ -5,6 +5,17 @@ import SwiftData
 
 @MainActor
 class Storage {
+  enum CleanupKind {
+    case images
+    case nonPlainText
+  }
+
+  struct CleanupResult {
+    let affectedItems: Int
+    let deletedItems: Int
+    let removedContents: Int
+  }
+
   static let shared = Storage()
 
   var container: ModelContainer
@@ -76,6 +87,65 @@ class Storage {
     try context.save()
 
     return count
+  }
+
+  func cleanupHistory(_ kind: CleanupKind) throws -> CleanupResult {
+    let items = try context.fetch(FetchDescriptor<HistoryItem>())
+    let plainTextType = NSPasteboard.PasteboardType.string.rawValue
+    var affectedItems = 0
+    var deletedItems = 0
+    var removedContents = 0
+
+    for item in items {
+      let contentsToRemove: [HistoryItemContent]
+      switch kind {
+      case .images:
+        contentsToRemove = item.contents.filter { Self.isImageType($0.type) }
+        guard !contentsToRemove.isEmpty else { continue }
+      case .nonPlainText:
+        contentsToRemove = item.contents.filter { $0.type != plainTextType }
+        guard !contentsToRemove.isEmpty || item.contents.isEmpty else { continue }
+      }
+
+      affectedItems += 1
+      let hasPlainText = item.contents.contains { $0.type == plainTextType }
+      if !hasPlainText {
+        removedContents += item.contents.count
+        item.contents.forEach(context.delete)
+        item.contents.removeAll()
+        context.delete(item)
+        deletedItems += 1
+      } else {
+        removedContents += contentsToRemove.count
+        let removedIDs = Set(contentsToRemove.map(\.persistentModelID))
+        item.contents.removeAll { removedIDs.contains($0.persistentModelID) }
+        contentsToRemove.forEach(context.delete)
+      }
+    }
+
+    context.processPendingChanges()
+    try context.save()
+    return CleanupResult(
+      affectedItems: affectedItems,
+      deletedItems: deletedItems,
+      removedContents: removedContents
+    )
+  }
+
+  private static func isImageType(_ rawType: String) -> Bool {
+    if StorageType.images.types.contains(where: { $0.rawValue == rawType }) {
+      return true
+    }
+
+    let type = rawType.lowercased()
+    return type.contains("image")
+      || type.contains("jpeg")
+      || type.contains("jpg")
+      || type.contains("png")
+      || type.contains("tiff")
+      || type.contains("gif")
+      || type.contains("heic")
+      || type.contains("bmp")
   }
 }
 
