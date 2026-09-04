@@ -4,7 +4,6 @@ import Defaults
 import Foundation
 import Logging
 import Observation
-import Sauce
 import Settings
 import SwiftData
 
@@ -49,23 +48,6 @@ class History: ItemsContainer { // swiftlint:disable:this type_body_length
     AppState.shared.popup.needsResize = true
   }
 
-  var pressedShortcutItem: HistoryItemDecorator? {
-    guard let event = NSApp.currentEvent else {
-      return nil
-    }
-
-    let modifierFlags = event.modifierFlags
-      .intersection(.deviceIndependentFlagsMask)
-      .subtracting(.capsLock)
-
-    guard HistoryItemAction(modifierFlags) != .unknown else {
-      return nil
-    }
-
-    let key = Sauce.shared.key(for: Int(event.keyCode))
-    return items.first { $0.shortcuts.contains(where: { $0.key == key }) }
-  }
-
   private let search = Search()
   private let sorter = Sorter()
   private let throttler = Throttler(minimumDelay: 0.2)
@@ -85,12 +67,6 @@ class History: ItemsContainer { // swiftlint:disable:this type_body_length
   var all: [HistoryItemDecorator] = []
 
   init() {
-    Task {
-      for await _ in Defaults.updates(.pasteByDefault, initial: false) {
-        updateShortcuts()
-      }
-    }
-
     Task {
       for await _ in Defaults.updates(.sortBy, initial: false) {
         try? await load()
@@ -144,7 +120,6 @@ class History: ItemsContainer { // swiftlint:disable:this type_body_length
 
     limitHistorySize(to: Defaults[.size])
 
-    updateShortcuts()
     // Ensure that panel size is proper *after* loading all items.
     Task {
       AppState.shared.popup.needsResize = true
@@ -174,7 +149,6 @@ class History: ItemsContainer { // swiftlint:disable:this type_body_length
       }
       items = all
       canLoadMore = results.count == pageSize
-      updateShortcuts()
     } catch {
       logger.error("Failed to load more history: \(String(reflecting: error))")
     }
@@ -267,8 +241,8 @@ class History: ItemsContainer { // swiftlint:disable:this type_body_length
     sessionLog[Clipboard.shared.changeCount] = item
 
     var itemDecorator: HistoryItemDecorator
-    if let pin = item.pin {
-      itemDecorator = HistoryItemDecorator(item, shortcuts: KeyShortcut.create(character: pin))
+    if item.pin != nil {
+      itemDecorator = HistoryItemDecorator(item)
       if let removedItemIndex {
         // If pin to bottom -> last element should be inserted to the removedItemIndex - 1
         // Or to the last all array place.
@@ -283,7 +257,6 @@ class History: ItemsContainer { // swiftlint:disable:this type_body_length
       }
 
       items = all
-      updateUnpinnedShortcuts()
       AppState.shared.popup.needsResize = true
     }
 
@@ -386,7 +359,6 @@ class History: ItemsContainer { // swiftlint:disable:this type_body_length
     items.removeAll { $0 == item }
     sessionLog.removeValues { $0 == item.item }
 
-    updateUnpinnedShortcuts()
     Task {
       AppState.shared.popup.needsResize = true
     }
@@ -552,7 +524,6 @@ class History: ItemsContainer { // swiftlint:disable:this type_body_length
     items = all
 
     searchQuery = ""
-    updateUnpinnedShortcuts()
     if item.isUnpinned {
       AppState.shared.navigator.scrollTarget = item.id
     }
@@ -583,17 +554,6 @@ class History: ItemsContainer { // swiftlint:disable:this type_body_length
       return item
     }
 
-    updateUnpinnedShortcuts()
-  }
-
-  private func updateShortcuts() {
-    for item in pinnedItems {
-      if let pin = item.item.pin {
-        item.shortcuts = KeyShortcut.create(character: pin)
-      }
-    }
-
-    updateUnpinnedShortcuts()
   }
 
   @MainActor
@@ -602,16 +562,4 @@ class History: ItemsContainer { // swiftlint:disable:this type_body_length
     item.item.title = title
   }
 
-  private func updateUnpinnedShortcuts() {
-    let visibleUnpinnedItems = unpinnedItems.filter(\.isVisible)
-    for item in visibleUnpinnedItems {
-      item.shortcuts = []
-    }
-
-    var index = 1
-    for item in visibleUnpinnedItems.prefix(9) {
-      item.shortcuts = KeyShortcut.create(character: String(index))
-      index += 1
-    }
-  }
 }

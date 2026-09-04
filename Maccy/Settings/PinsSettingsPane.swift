@@ -1,27 +1,6 @@
 import SwiftData
 import SwiftUI
 
-struct PinPickerView: View {
-  @Bindable var item: HistoryItem
-  var availablePins: [String]
-
-  var body: some View {
-    if let pin = item.pin {
-      // Ensure unique pins for ForEach
-      let uniquePins = Array(Set(availablePins + [pin])).sorted()
-      Picker("", selection: $item.pin) {
-        ForEach(uniquePins, id: \.self) { pin in
-          Text(pin)
-            .tag(pin as String?)
-        }
-      }
-      .controlSize(.small)
-      .labelsHidden()
-      .accessibilityLabel(Text("Key", tableName: "PinsSettings"))
-    }
-  }
-}
-
 struct PinTitleView: View {
   @Bindable var item: HistoryItem
 
@@ -41,13 +20,20 @@ struct PinValueView: View {
 
   init(item: HistoryItem) {
     self.item = item
-    self._editableValue = State(initialValue: item.previewableText)
 
-    // Check if this item has editable text content
-    let hasPlainText = item.text != nil
-    let hasImage = item.image != nil
-    let hasFileURLs = !item.fileURLs.isEmpty
-    let hasRichText = item.rtf != nil || item.html != nil
+    // Inspect type identifiers first so opening this pane doesn't decode large images.
+    let contentTypes = Set(item.contents.map(\.type))
+    let hasPlainText = contentTypes.contains(NSPasteboard.PasteboardType.string.rawValue)
+    let hasImage = StorageType.images.types.contains { contentTypes.contains($0.rawValue) }
+    let hasFileURLs = contentTypes.contains(NSPasteboard.PasteboardType.fileURL.rawValue)
+    let hasRichText = [NSPasteboard.PasteboardType.rtf, .html].contains {
+      contentTypes.contains($0.rawValue)
+    }
+    self._editableValue = State(
+      initialValue: (hasPlainText || hasRichText) && !hasImage && !hasFileURLs
+        ? item.previewableText
+        : item.title
+    )
 
     // Consider it text content only if it has plain text and doesn't have images or file URLs
     self._isTextContent = State(initialValue: hasPlainText && !hasImage && !hasFileURLs)
@@ -121,7 +107,6 @@ struct PinsSettingsPane: View {
   @Query(filter: #Predicate<HistoryItem> { $0.pin != nil }, sort: \.firstCopiedAt)
   private var items: [HistoryItem]
 
-  @State private var availablePins: [String] = []
   @State private var selection: Set<PersistentIdentifier> = []
   @State private var searchQuery = ""
   @State private var showDeleteConfirmation = false
@@ -174,14 +159,6 @@ struct PinsSettingsPane: View {
       }
 
       Table(filteredItems, selection: $selection) {
-        TableColumn(Text("Key", tableName: "PinsSettings")) { item in
-          PinPickerView(item: item, availablePins: availablePins)
-            .onChange(of: item.pin) {
-              availablePins = HistoryItem.availablePins(in: items)
-            }
-        }
-        .width(60)
-
         TableColumn(Text("Alias", tableName: "PinsSettings")) { item in
           PinTitleView(item: item)
         }
@@ -189,9 +166,6 @@ struct PinsSettingsPane: View {
         TableColumn(Text("Content", tableName: "PinsSettings")) { item in
           PinValueView(item: item)
         }
-      }
-      .onAppear {
-        availablePins = HistoryItem.availablePins(in: items)
       }
       .onDeleteCommand {
         selectedDecorators.forEach(appState.history.delete)

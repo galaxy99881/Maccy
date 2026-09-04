@@ -23,8 +23,6 @@ class HistoryItemDecorator: Identifiable, Hashable, HasVisibility {
   var isSelected: Bool {
     return selectionIndex != -1
   }
-  var shortcuts: [KeyShortcut] = []
-
   var application: String? {
     if item.universalClipboard {
       return "iCloud"
@@ -93,13 +91,11 @@ class HistoryItemDecorator: Identifiable, Hashable, HasVisibility {
     return parts.joined(separator: ", ")
   }
 
-  init(_ item: HistoryItem, shortcuts: [KeyShortcut] = []) {
+  init(_ item: HistoryItem) {
     self.item = item
-    self.shortcuts = shortcuts
     self.title = item.title
     self.applicationImage = ApplicationImageCache.shared.getImage(item: item)
 
-    synchronizeItemPin()
     synchronizeItemTitle()
   }
 
@@ -212,19 +208,6 @@ class HistoryItemDecorator: Identifiable, Hashable, HasVisibility {
     } else {
       let pin = HistoryItem.randomAvailablePin
       item.pin = pin
-    }
-  }
-
-  private func synchronizeItemPin() {
-    _ = withObservationTracking {
-      item.pin
-    } onChange: {
-      DispatchQueue.main.async {
-        if let pin = self.item.pin {
-          self.shortcuts = KeyShortcut.create(character: pin)
-        }
-        self.synchronizeItemPin()
-      }
     }
   }
 

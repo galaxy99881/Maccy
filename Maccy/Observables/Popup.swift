@@ -144,15 +144,6 @@ class Popup {
 
   private func handleKeyDown(_ event: NSEvent) -> NSEvent? {
     if isHotKeyCode(Int(event.keyCode)) {
-      if let item = History.shared.pressedShortcutItem {
-        AppState.shared.navigator.select(item: item)
-        let modifierFlags = NSEvent.ModifierFlags.currentModifierFlags
-        Task { @MainActor in
-          AppState.shared.history.select(item, flags: modifierFlags)
-        }
-        return nil
-      }
-
       if state == .opening {
         state = .cycle
         // Next 'if' will highlight next item and then return nil
