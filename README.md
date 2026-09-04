@@ -1,171 +1,134 @@
+# Maccy 纯文本无限历史增强版
+
+> [!IMPORTANT]
+> 这是 [Maccy](https://github.com/p0deje/Maccy) 的个人增强分支，不是官方发行版。官方项目和唯一官方网站分别是 [p0deje/Maccy](https://github.com/p0deje/Maccy) 和 [maccy.app](https://maccy.app)。
+
 > [!WARNING]
-> **Beware of fake websites impersonating Maccy.** Malicious sites (such as `maccyapp.net` and `maccyapp.com`) distribute malware disguised as Maccy. [**maccy.app**](https://maccy.app) is the **only** official website.
+> 通过 Homebrew 或官方 Releases 安装的是官方版，不包含本仓库的增强功能。请警惕仿冒 Maccy 的恶意网站。
 
-<img width="128px" src="https://maccy.app/img/maccy/Logo.png" alt="Logo" />
+[中文](#中文) · [English](#english)
 
-# [Maccy](https://maccy.app)
+---
 
-[![Downloads](https://img.shields.io/github/downloads/p0deje/Maccy/total.svg)](https://github.com/p0deje/Maccy/releases/latest)
-[![Build Status](https://img.shields.io/bitrise/716921b669780314/master?token=3pMiCb5dpFzlO-7jTYtO3Q)](https://app.bitrise.io/app/716921b669780314)
+## 中文
 
-Maccy is a lightweight clipboard manager for macOS. It keeps the history of what you copy
-and lets you quickly navigate, search, and use previous clipboard contents.
+### 项目定位
 
-Maccy works on macOS Sonoma 14 or higher.
+本分支为需要长期保留大量文本片段的使用场景设计。核心思路是：无限保留纯文本，分页加载，减少图片和富文本带来的内存、磁盘与界面压力。
 
-<!-- vim-markdown-toc GFM -->
+它保留 Maccy 原有的菜单栏体验、搜索、方向键导航、回车选择、置顶和自动粘贴等能力。
 
-* [Features](#features)
-* [Install](#install)
-* [Usage](#usage)
-* [Advanced](#advanced)
-  * [Ignore Copied Items](#ignore-copied-items)
-  * [Ignore Custom Copy Types](#ignore-custom-copy-types)
-  * [Speed up Clipboard Check Interval](#speed-up-clipboard-check-interval)
-* [FAQ](#faq)
-  * [Why doesn't it paste when I select an item in history?](#why-doesnt-it-paste-when-i-select-an-item-in-history)
-  * [When assigning a hotkey to open Maccy, it says that this hotkey is already used in some system setting.](#when-assigning-a-hotkey-to-open-maccy-it-says-that-this-hotkey-is-already-used-in-some-system-setting)
-  * [How to restore hidden footer?](#how-to-restore-hidden-footer)
-  * [How to ignore copies from Universal Clipboard?](#how-to-ignore-copies-from-universal-clipboard)
-  * [My keyboard shortcut stopped working in password fields. How do I fix this?](#my-keyboard-shortcut-stopped-working-in-password-fields-how-do-i-fix-this)
-* [Translations](#translations)
-* [Motivation](#motivation)
-* [License](#license)
+### 与官方版的主要区别
 
-<!-- vim-markdown-toc -->
+| 功能 | 官方 Maccy | 本增强分支 |
+| --- | --- | --- |
+| 历史上限 | 设置界面上限为 999 | 增加“无限纯文本”模式，`historySize = 0` 表示无限 |
+| 无限模式存储 | 无专用无限模式 | 仅保存纯文本；丢弃新图片、文件、HTML 和 RTF；跳过超过 10 MB 的文本 |
+| 大历史加载 | 基于官方默认历史模型 | 启动只加载全部置顶项和最近 200 条，滚动时分页读取更旧记录 |
+| 搜索 | 搜索当前历史集合 | 无限模式从数据库按需取候选项，避免先加载全部记录 |
+| 条目快捷键 | 为最近项和置顶项显示数字/字母快捷键 | 已移除这套显示、映射和按键监听；保留全局唤出及方向键/回车操作 |
+| 置顶区 | 直接展示置顶项 | 超过 8 条后使用独立限高滚动区和懒加载，支持自动滚动到键盘选中项 |
+| 置顶管理 | 修改单条置顶内容及键位 | 增加搜索、多选、全选、批量取消置顶和批量删除 |
+| 备份与恢复 | 无内置完整历史导出/导入流程 | 增加“导出备份”和“导入并恢复”，备份使用 SQLite 一致性快照并附带版本信息 |
+| 历史清理 | 主要支持清空历史 | 增加“清除全部图片”和“仅保留纯文本”，执行前强提醒备份 |
+| 自动粘贴 | 依赖 macOS 辅助功能权限 | 增加权限提示、原应用焦点恢复和短延迟，降低模拟 `⌘V` 发给 Maccy 自己的概率 |
+| 旧数据修复 | 依赖官方版本实现 | 启动时清理孤立内容并修正可能导致 CoreText 卡死的旧标题 |
+| Xcode 兼容 | 以官方当前开发环境为准 | 对 macOS 26 专用视觉 API 做条件编译，可使用 Xcode 16.4 构建 |
 
-## Features
+### 清理操作说明
 
-* Lightweight and fast
-* Keyboard-first
-* Secure and private
-* Native UI
-* Open source and free
+- **清除全部图片**：混合记录保留纯文本并移除图片数据；没有纯文本的图片记录会整条删除。
+- **仅保留纯文本**：移除图片、文件、HTML、RTF 和其他格式；没有纯文本的记录会整条删除。
+- 这些操作无法撤销。请先在“偏好设置 → 存储 → 备份”中导出完整备份。
 
-## Install
+### 安装与构建
 
-Download the latest version from the [releases](https://github.com/p0deje/Maccy/releases/latest) page, or use [Homebrew](https://brew.sh/):
+本仓库目前以源码形式提供增强版。
 
 ```sh
-brew install maccy
+git clone https://github.com/galaxy99881/Maccy.git
+cd Maccy
+open Maccy.xcodeproj
 ```
 
-## Usage
+使用 Xcode 选择 `Maccy` scheme 后构建。项目要求 macOS 14 或更高版本。
 
-1. <kbd>SHIFT (⇧)</kbd> + <kbd>COMMAND (⌘)</kbd> + <kbd>C</kbd> to popup Maccy or click on its icon in the menu bar.
-2. Type what you want to find.
-3. To select the history item you wish to copy, press <kbd>ENTER</kbd>, or click the item, or use <kbd>COMMAND (⌘)</kbd> + `n` shortcut.
-4. To choose the history item and paste, press <kbd>OPTION (⌥)</kbd> + <kbd>ENTER</kbd>, or <kbd>OPTION (⌥)</kbd> + <kbd>CLICK</kbd> the item, or use <kbd>OPTION (⌥)</kbd> + `n` shortcut.
-5. To choose the history item and paste without formatting, press <kbd>OPTION (⌥)</kbd> + <kbd>SHIFT (⇧)</kbd> + <kbd>ENTER</kbd>, or <kbd>OPTION (⌥)</kbd> + <kbd>SHIFT (⇧)</kbd> + <kbd>CLICK</kbd> the item, or use <kbd>OPTION (⌥)</kbd> + <kbd>SHIFT (⇧)</kbd> + `n` shortcut.
-6. To delete the history item, press <kbd>OPTION (⌥)</kbd> + <kbd>DELETE (⌫)</kbd>.
-7. To see the full text of the history item, wait a couple of seconds for tooltip.
-8. To pin the history item so that it remains on top of the list, press <kbd>OPTION (⌥)</kbd> + <kbd>P</kbd>. The item will be moved to the top with a random but permanent keyboard shortcut. To unpin it, press <kbd>OPTION (⌥)</kbd> + <kbd>P</kbd> again.
-9. To clear all unpinned items, select _Clear_ in the menu, or press <kbd>OPTION (⌥)</kbd> + <kbd>COMMAND (⌘)</kbd> + <kbd>DELETE (⌫)</kbd>. To clear all items including pinned, select _Clear_ in the menu with  <kbd>OPTION (⌥)</kbd> pressed, or press <kbd>SHIFT (⇧)</kbd> + <kbd>OPTION (⌥)</kbd> + <kbd>COMMAND (⌘)</kbd> + <kbd>DELETE (⌫)</kbd>.
-10. To disable Maccy and ignore new copies, click on the menu icon with <kbd>OPTION (⌥)</kbd> pressed.
-11. To ignore only the next copy, click on the menu icon with <kbd>OPTION (⌥)</kbd> + <kbd>SHIFT (⇧)</kbd> pressed.
-12. To customize the behavior, check "Preferences…" window, or press <kbd>COMMAND (⌘)</kbd> + <kbd>,</kbd>.
+> [!CAUTION]
+> 本分支当前仍使用官方 Bundle ID `org.p0deje.Maccy`。不要把官方版、测试版和本分支同时放在 `/Applications` 中，否则 macOS 可能把辅助功能权限关联到错误副本。建议只保留一个 `/Applications/Maccy.app`，其他副本移到单独的备份目录。
 
-## Advanced
+### 使用
 
-### Ignore Copied Items
+1. 使用 <kbd>⇧</kbd> + <kbd>⌘</kbd> + <kbd>C</kbd> 打开 Maccy，或点击菜单栏图标。
+2. 输入关键词搜索，用方向键选择。
+3. 按 <kbd>Return</kbd> 或点击记录。开启“自动粘贴”后会直接粘贴到原应用。
+4. 用 <kbd>⌥</kbd> + <kbd>P</kbd> 置顶或取消置顶。
+5. 按 <kbd>⌘</kbd> + <kbd>,</kbd> 打开偏好设置。
 
-You can tell Maccy to ignore all copied items:
+自动粘贴需要在“系统设置 → 隐私与安全性 → 辅助功能”中允许当前 `/Applications/Maccy.app`。
+
+---
+
+## English
+
+### Project scope
+
+This is a personal enhanced fork for users who want to retain a large, long-lived collection of text snippets. Its central design is unlimited plain-text history with paged loading, while avoiding the memory, disk, and UI cost of images and rich clipboard formats.
+
+It retains Maccy's menu-bar experience, search, arrow-key navigation, Return selection, pins, and automatic paste.
+
+### Main differences from official Maccy
+
+| Feature | Official Maccy | This enhanced fork |
+| --- | --- | --- |
+| History limit | Settings UI is capped at 999 items | Adds Unlimited Plain Text mode; `historySize = 0` is the unlimited sentinel |
+| Unlimited-mode storage | No dedicated unlimited mode | Stores plain text only; discards new images, files, HTML, and RTF; skips text larger than 10 MB |
+| Large-history loading | Uses the official default history model | Loads all pins plus only the 200 most recent items at launch, then fetches older pages while scrolling |
+| Search | Searches the active history collection | Fetches database candidates on demand in unlimited mode instead of loading the entire history first |
+| Per-item shortcuts | Shows number/letter shortcuts for recent and pinned items | Removes their display, mapping, and key handling; global popup and arrow/Return controls remain |
+| Pinned area | Displays pinned items directly | Uses a lazy, height-limited scroll area after 8 pins and scrolls to keyboard selections |
+| Pin management | Edits an individual pin and its key | Adds search, multiple selection, Select All, bulk unpin, and bulk delete |
+| Backup and restore | No built-in full-history export/import workflow | Adds Export Backup and Import & Restore using a consistent SQLite snapshot and versioned manifest |
+| History cleanup | Primarily clears history as a whole | Adds Remove All Images and Keep Plain Text Only, with a strong backup warning |
+| Automatic paste | Relies on macOS Accessibility permission | Adds permission prompting, previous-app focus restoration, and a short delay before simulated `⌘V` |
+| Legacy-store repair | Depends on the official release implementation | Cleans orphaned content and sanitizes legacy titles that can hang CoreText |
+| Xcode compatibility | Follows the official current development environment | Conditionally compiles macOS 26-only visual APIs so the app builds with Xcode 16.4 |
+
+### Cleanup behavior
+
+- **Remove All Images** keeps plain text in mixed entries and removes their image data. Image entries without plain text are deleted entirely.
+- **Keep Plain Text Only** removes images, files, HTML, RTF, and other formats. Entries without plain text are deleted entirely.
+- These operations cannot be undone. Export a complete backup from **Preferences → Storage → Backup** first.
+
+### Install and build
+
+The enhanced edition is currently distributed as source code in this repository.
 
 ```sh
-defaults write org.p0deje.Maccy ignoreEvents true # default is false
+git clone https://github.com/galaxy99881/Maccy.git
+cd Maccy
+open Maccy.xcodeproj
 ```
 
-This is useful if you have some workflow for copying sensitive data. You can set `ignoreEvents` to true, copy the data and set `ignoreEvents` back to false.
+Select the `Maccy` scheme in Xcode and build. The project targets macOS 14 or later.
 
-You can also click the menu icon with <kbd>OPTION (⌥)</kbd> pressed. To ignore only the next copy, click with <kbd>OPTION (⌥)</kbd> + <kbd>SHIFT (⇧)</kbd> pressed.
+> [!CAUTION]
+> This fork currently retains the official bundle identifier, `org.p0deje.Maccy`. Do not keep the official app, a test build, and this fork together in `/Applications`; macOS may attach Accessibility permission to the wrong copy. Keep only one `/Applications/Maccy.app` and move other copies to a separate backup directory.
 
-### Ignore Custom Copy Types
+### Usage
 
-By default Maccy will ignore certain copy types that are considered to be confidential
-or temporary. The default list always include the following types:
+1. Press <kbd>⇧</kbd> + <kbd>⌘</kbd> + <kbd>C</kbd>, or click the menu-bar icon, to open Maccy.
+2. Type to search and use the arrow keys to navigate.
+3. Press <kbd>Return</kbd> or click an item. With Paste automatically enabled, it is pasted into the previously active app.
+4. Press <kbd>⌥</kbd> + <kbd>P</kbd> to pin or unpin the selected item.
+5. Press <kbd>⌘</kbd> + <kbd>,</kbd> to open Preferences.
 
-* `org.nspasteboard.TransientType`
-* `org.nspasteboard.ConcealedType`
-* `org.nspasteboard.AutoGeneratedType`
+Automatic paste requires the current `/Applications/Maccy.app` to be enabled in **System Settings → Privacy & Security → Accessibility**.
 
-Also, default configuration includes the following types but they can be removed
-or overwritten:
+## Upstream and license
 
-* `com.agilebits.onepassword`
-* `com.typeit4me.clipping`
-* `de.petermaurer.TransientPasteboardType`
-* `Pasteboard generator type`
-* `net.antelle.keeweb`
+Maccy was created and is maintained upstream by [Alex Rodionov (p0deje)](https://github.com/p0deje). This fork builds on that work and remains available under the [MIT License](./LICENSE).
 
-You can add additional custom types using settings.
-To find what custom types are used by an application, you can use
-free application [Pasteboard-Viewer](https://github.com/sindresorhus/Pasteboard-Viewer).
-Simply download the application, open it, copy something from the application you
-want to ignore and look for any custom types in the left sidebar. [Here is an example
-of using this approach to ignore Adobe InDesign](https://github.com/p0deje/Maccy/issues/125).
+For official downloads, documentation, support, and releases, use:
 
-### Speed up Clipboard Check Interval
-
-By default, Maccy checks clipboard every 500 ms, which should be enough for most users. If you want
-to speed it up, you can change it with `defaults`:
-
-```sh
-defaults write org.p0deje.Maccy clipboardCheckInterval 0.1 # 100 ms
-```
-
-## FAQ
-
-### Why doesn't it paste when I select an item in history?
-
-1. Make sure you have "Paste automatically" enabled in Preferences.
-2. Make sure "Maccy" is added to System Settings -> Privacy & Security -> Accessibility.
-
-### When assigning a hotkey to open Maccy, it says that this hotkey is already used in some system setting.
-
-1. Open System settings -> Keyboard -> Keyboard Shortcuts.
-2. Find where that hotkey is used. For example, "Convert text to simplified Chinese" is under Services -> Text.
-3. Disable that hotkey or remove assigned combination ([screenshot](https://github.com/p0deje/Maccy/assets/576152/446719e6-c3e5-4eb0-95fb-5a811066487f)).
-4. Restart Maccy.
-5. Assign hotkey in Maccy settings.
-
-### How to restore hidden footer?
-
-1. Open Maccy window.
-2. Press <kbd>COMMAND (⌘)</kbd> + <kbd>,</kbd> to open preferences.
-3. Enable footer in Appearance section.
-
-If for some reason it doesn't work, run the following command in Terminal.app:
-
-```sh
-defaults write org.p0deje.Maccy showFooter 1
-```
-
-### How to ignore copies from [Universal Clipboard](https://support.apple.com/en-us/102430)?
-
-1. Open Preferences -> Ignore -> Pasteboard Types.
-2. Add `com.apple.is-remote-clipboard`.
-
-### My keyboard shortcut stopped working in password fields. How do I fix this?
-
-If your shortcut produces a character (like `Option+C` → "ç"), macOS security may block it in password fields. Use [Karabiner-Elements](https://karabiner-elements.pqrs.org/) to remap your shortcut to a different combination like `Cmd+Shift+C`. [See detailed solution](docs/keyboard-shortcut-password-fields.md).
-
-## Translations
-
-The translations are hosted in [Weblate](https://hosted.weblate.org/engage/maccy/).
-You can use it to suggest changes in translations and localize the application to a new language.
-
-[![Translation status](https://hosted.weblate.org/widget/maccy/multi-auto.svg)](https://hosted.weblate.org/engage/maccy/)
-
-## Motivation
-
-There are dozens of similar applications out there, so why build another?
-Over the past years since I moved from Linux to macOS, I struggled to find
-a clipboard manager that is as free and simple as [Parcellite](http://parcellite.sourceforge.net),
-but I couldn't. So I've decided to build one.
-
-Also, I wanted to learn Swift and get acquainted with macOS application development.
-
-
-## License
-
-[MIT](./LICENSE)
+- [Official repository: p0deje/Maccy](https://github.com/p0deje/Maccy)
+- [Official website: maccy.app](https://maccy.app)
