@@ -122,11 +122,58 @@ struct PinsSettingsPane: View {
   private var items: [HistoryItem]
 
   @State private var availablePins: [String] = []
-  @State private var selection: PersistentIdentifier?
+  @State private var selection: Set<PersistentIdentifier> = []
+  @State private var searchQuery = ""
+  @State private var showDeleteConfirmation = false
+
+  private var filteredItems: [HistoryItem] {
+    guard !searchQuery.isEmpty else { return items }
+    return items.filter {
+      $0.title.localizedStandardContains(searchQuery)
+        || ($0.text?.localizedStandardContains(searchQuery) ?? false)
+    }
+  }
+
+  private var selectedDecorators: [HistoryItemDecorator] {
+    appState.history.items.filter { selection.contains($0.item.id) }
+  }
 
   var body: some View {
     VStack(alignment: .leading) {
-      Table(items, selection: $selection) {
+      HStack {
+        TextField(NSLocalizedString("SearchPins", tableName: "PinsSettings", comment: ""), text: $searchQuery)
+          .textFieldStyle(.roundedBorder)
+          .frame(maxWidth: 260)
+
+        Text("\(filteredItems.count) / \(items.count)")
+          .foregroundStyle(.secondary)
+
+        Spacer()
+
+        Button {
+          selection = Set(filteredItems.map(\.id))
+        } label: {
+          Text("SelectAll", tableName: "PinsSettings")
+        }
+        .disabled(filteredItems.isEmpty)
+
+        Button {
+          selectedDecorators.forEach(appState.history.togglePin)
+          selection.removeAll()
+        } label: {
+          Text("UnpinSelected", tableName: "PinsSettings")
+        }
+        .disabled(selection.isEmpty)
+
+        Button(role: .destructive) {
+          showDeleteConfirmation = true
+        } label: {
+          Text("DeleteSelected", tableName: "PinsSettings")
+        }
+        .disabled(selection.isEmpty)
+      }
+
+      Table(filteredItems, selection: $selection) {
         TableColumn(Text("Key", tableName: "PinsSettings")) { item in
           PinPickerView(item: item, availablePins: availablePins)
             .onChange(of: item.pin) {
@@ -147,12 +194,21 @@ struct PinsSettingsPane: View {
         availablePins = HistoryItem.availablePins(in: items)
       }
       .onDeleteCommand {
-        guard let selection,
-              let item = appState.history.items.first(where: { $0.item.id == selection }) else {
-          return
-        }
+        selectedDecorators.forEach(appState.history.delete)
+        selection.removeAll()
+      }
+      .onChange(of: searchQuery) { selection.removeAll() }
 
-        appState.history.delete(item)
+      .confirmationDialog(
+        Text("DeleteConfirmationTitle", tableName: "PinsSettings"),
+        isPresented: $showDeleteConfirmation
+      ) {
+        Button(role: .destructive) {
+          selectedDecorators.forEach(appState.history.delete)
+          selection.removeAll()
+        } label: {
+          Text("DeleteSelected", tableName: "PinsSettings")
+        }
       }
 
       Text("PinCustomizationDescription", tableName: "PinsSettings")

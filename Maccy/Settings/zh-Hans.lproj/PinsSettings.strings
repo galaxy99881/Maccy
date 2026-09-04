@@ -5,3 +5,8 @@
 "ContentIsNotText" = "不可编辑的内容（图像或文件）";
 "RichTextEditWarning" = "编辑将放弃所有格式化。";
 "PinCustomizationDescription" = "您可以自定义任何置顶项目的热键、标题和内容。\n要编辑，请双击该项目并输入新值。";
+"SearchPins" = "搜索置顶项";
+"SelectAll" = "全选";
+"UnpinSelected" = "取消置顶所选项";
+"DeleteSelected" = "删除所选项";
+"DeleteConfirmationTitle" = "要永久删除所选剪贴板记录吗？";

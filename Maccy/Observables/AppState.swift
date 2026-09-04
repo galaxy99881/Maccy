@@ -182,6 +182,13 @@ class AppState: Sendable {
     settingsWindowController?.window?.orderFrontRegardless()
   }
 
+  @MainActor
+  func openPinsPreferences() {
+    openPreferences()
+    settingsWindowController?.show(pane: .pins)
+    settingsWindowController?.window?.orderFrontRegardless()
+  }
+
   func quit() {
     NSApp.terminate(self)
   }
