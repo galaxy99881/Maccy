@@ -6,8 +6,8 @@
 "SaveDescription" = "選擇應儲存的複製內容類型。";
 "Size" = "大小：";
 "SizeTooltip" = "要保留的歷史記錄項目數量。\n預設：200。";
-"Unlimited" = "無限";
-"UnlimitedTooltip" = "保留全部剪貼簿歷史。長期使用可能增加記憶體、磁碟用量和搜尋延遲。";
+"Unlimited" = "無限純文字";
+"UnlimitedTooltip" = "僅無限保留純文字；丟棄圖片、檔案、HTML 和 RTF，跳過超過 10 MB 的文字。舊記錄按需載入和搜尋。";
 "CurrentSizeTooltip" = "目前在磁碟上的大小。";
 "SortBy" = "排序方式：";
 "LastCopiedAt" = "上次拷貝時間";

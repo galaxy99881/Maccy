@@ -58,14 +58,22 @@ struct StorageSettingsPane: View {
 
   @Default(.size) private var size
   @Default(.sortBy) private var sortBy
+  @Default(.unlimitedPlainTextMode) private var unlimitedPlainTextMode
 
   @State private var viewModel = ViewModel()
   @State private var storageSize = Storage.shared.size
 
   private var unlimitedHistory: Binding<Bool> {
     Binding(
-      get: { size == 0 },
-      set: { size = $0 ? 0 : 200 }
+      get: { unlimitedPlainTextMode },
+      set: { enabled in
+        unlimitedPlainTextMode = enabled
+        if enabled {
+          size = 0
+        } else {
+          size = 200
+        }
+      }
     )
   }
 
@@ -86,14 +94,17 @@ struct StorageSettingsPane: View {
           isOn: $viewModel.saveFiles,
           label: { Text("Files", tableName: "StorageSettings") }
         )
+        .disabled(unlimitedPlainTextMode)
         Toggle(
           isOn: $viewModel.saveImages,
           label: { Text("Images", tableName: "StorageSettings") }
         )
+        .disabled(unlimitedPlainTextMode)
         Toggle(
           isOn: $viewModel.saveText,
           label: { Text("Text", tableName: "StorageSettings") }
         )
+        .disabled(unlimitedPlainTextMode)
         Text("SaveDescription", tableName: "StorageSettings")
           .controlSize(.small)
           .foregroundStyle(.gray)
@@ -103,12 +114,12 @@ struct StorageSettingsPane: View {
         HStack {
           TextField("", value: $size, formatter: sizeFormatter)
             .frame(width: 80)
-            .disabled(unlimitedHistory.wrappedValue)
+            .disabled(unlimitedPlainTextMode)
             .help(Text("SizeTooltip", tableName: "StorageSettings"))
             .accessibilityLabel(Text("Size", tableName: "StorageSettings"))
           Stepper("", value: $size, in: 1...999)
             .labelsHidden()
-            .disabled(unlimitedHistory.wrappedValue)
+            .disabled(unlimitedPlainTextMode)
             .accessibilityLabel(Text("Size", tableName: "StorageSettings"))
           Toggle(isOn: unlimitedHistory) {
             Text("Unlimited", tableName: "StorageSettings")

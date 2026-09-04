@@ -25,11 +25,14 @@ class ClipboardTests: XCTestCase {
   let savedIgnoreAllAppsExceptListed = Defaults[.ignoreAllAppsExceptListed]
   let savedIgnoredApps = Defaults[.ignoredApps]
   let savedIgnoredPasteboardTypes = Defaults[.ignoredPasteboardTypes]
+  let savedUnlimitedPlainTextMode = Defaults[.unlimitedPlainTextMode]
+  let savedMaximumPlainTextBytes = Defaults[.maximumPlainTextBytes]
 
   override func setUp() {
     super.setUp()
     Defaults[.ignoreAllAppsExceptListed] = false
     Defaults[.ignoreEvents] = false
+    Defaults[.unlimitedPlainTextMode] = false
   }
 
   override func tearDown() {
@@ -40,7 +43,40 @@ class ClipboardTests: XCTestCase {
     Defaults[.ignoreAllAppsExceptListed] = savedIgnoreAllAppsExceptListed
     Defaults[.ignoredApps] = savedIgnoredApps
     Defaults[.ignoredPasteboardTypes] = savedIgnoredPasteboardTypes
+    Defaults[.unlimitedPlainTextMode] = savedUnlimitedPlainTextMode
+    Defaults[.maximumPlainTextBytes] = savedMaximumPlainTextBytes
     clipboard.clearHooks()
+  }
+
+  func testUnlimitedPlainTextModeDiscardsRichContent() {
+    Defaults[.unlimitedPlainTextMode] = true
+    let hookExpectation = expectation(description: "Hook is called")
+    clipboard.onNewCopy { item in
+      XCTAssertEqual(item.contents.count, 1)
+      XCTAssertEqual(item.contents.first?.type, NSPasteboard.PasteboardType.string.rawValue)
+      XCTAssertEqual(item.text, "plain")
+      hookExpectation.fulfill()
+    }
+
+    clipboard.start()
+    pasteboard.declareTypes([.string, .html, .tiff], owner: nil)
+    pasteboard.setString("plain", forType: .string)
+    pasteboard.setString("<b>rich</b>", forType: .html)
+    pasteboard.setData(image.tiffRepresentation, forType: .tiff)
+    waitForExpectations(timeout: 2)
+  }
+
+  func testUnlimitedPlainTextModeSkipsOversizedText() {
+    Defaults[.unlimitedPlainTextMode] = true
+    Defaults[.maximumPlainTextBytes] = 4
+    let hookExpectation = expectation(description: "Hook is not called")
+    hookExpectation.isInverted = true
+    clipboard.onNewCopy { _ in hookExpectation.fulfill() }
+
+    clipboard.start()
+    pasteboard.declareTypes([.string], owner: nil)
+    pasteboard.setString("12345", forType: .string)
+    waitForExpectations(timeout: 2)
   }
 
   func testChangesListenerAndAddHooks() {

@@ -187,6 +187,17 @@ class Clipboard {
     // - https://github.com/p0deje/Maccy/issues/472
     var contents = [HistoryItemContent]()
     pasteboard.pasteboardItems?.forEach({ item in
+      if Defaults[.unlimitedPlainTextMode] {
+        guard let data = item.data(forType: .string),
+              !isEmptyString(item),
+              data.count <= Defaults[.maximumPlainTextBytes],
+              !shouldIgnore(item) else {
+          return
+        }
+        contents.append(HistoryItemContent(type: NSPasteboard.PasteboardType.string.rawValue, value: data))
+        return
+      }
+
       var types = Set(item.types)
       if types.contains(.string) && isEmptyString(item) && !richText(item) {
         return

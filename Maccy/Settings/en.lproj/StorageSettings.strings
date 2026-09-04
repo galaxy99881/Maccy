@@ -6,8 +6,8 @@
 "SaveDescription" = "Change what types of copied content should be stored.";
 "Size" = "Size:";
 "SizeTooltip" = "Number of history items to keep.\nDefault: 200.";
-"Unlimited" = "Unlimited";
-"UnlimitedTooltip" = "Keep all clipboard history. This can increase memory usage, disk usage, and search latency over time.";
+"Unlimited" = "Unlimited plain text";
+"UnlimitedTooltip" = "Keep unlimited plain-text history only. Images, files, HTML, and RTF are discarded; text over 10 MB is skipped. Older entries load and search on demand.";
 "CurrentSizeTooltip" = "Current size on disk.";
 "SortBy" = "Sort by:";
 "LastCopiedAt" = "Time of last copy";

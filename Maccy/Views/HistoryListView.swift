@@ -102,6 +102,11 @@ struct HistoryListView: View {
       ScrollViewReader { proxy in
         MultipleSelectionListView(items: unpinnedItems) { previous, item, next, index in
           HistoryItemView(item: item, previous: previous, next: next, index: index)
+            .onAppear {
+              if searchQuery.isEmpty && index >= max(unpinnedItems.count - 20, 0) {
+                appState.history.loadMore()
+              }
+            }
         }
         .padding(.top, scrollTopPadding)
         .padding(.bottom, scrollBottomPadding)

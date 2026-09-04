@@ -6,8 +6,8 @@
 "SaveDescription" = "设置何种类型的内容会被保存。";
 "Size" = "数量：";
 "SizeTooltip" = "保留条历史记录。\n默认: 200。";
-"Unlimited" = "无限";
-"UnlimitedTooltip" = "保留全部剪贴板历史。长期使用可能增加内存、磁盘占用和搜索延迟。";
+"Unlimited" = "无限纯文本";
+"UnlimitedTooltip" = "仅无限保留纯文本；丢弃图片、文件、HTML 和 RTF，跳过超过 10 MB 的文本。旧记录按需加载和搜索。";
 "CurrentSizeTooltip" = "磁盘上的当前大小。";
 "SortBy" = "排序方式：";
 "LastCopiedAt" = "上次复制时间";

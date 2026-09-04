@@ -22,17 +22,31 @@ class History: ItemsContainer { // swiftlint:disable:this type_body_length
   var searchQuery: String = "" {
     didSet {
       throttler.throttle { [self] in
-        updateItems(search.search(string: searchQuery, within: all))
-
-        if searchQuery.isEmpty {
-          AppState.shared.navigator.select(item: unpinnedItems.first)
-        } else {
-          AppState.shared.navigator.highlightFirst()
+        let query = searchQuery
+        if Defaults[.unlimitedPlainTextMode], !query.isEmpty {
+          Task { @MainActor [self] in
+            let candidates = databaseSearchCandidates(for: query)
+            guard query == searchQuery else { return }
+            updateItems(search.search(string: query, within: candidates))
+            finishSearchNavigation(query: query)
+          }
+          return
         }
 
-        AppState.shared.popup.needsResize = true
+        updateItems(search.search(string: query, within: all))
+        finishSearchNavigation(query: query)
       }
     }
+  }
+
+  private func finishSearchNavigation(query: String) {
+    if query.isEmpty {
+      AppState.shared.navigator.select(item: unpinnedItems.first)
+    } else {
+      AppState.shared.navigator.highlightFirst()
+    }
+
+    AppState.shared.popup.needsResize = true
   }
 
   var pressedShortcutItem: HistoryItemDecorator? {
@@ -55,6 +69,11 @@ class History: ItemsContainer { // swiftlint:disable:this type_body_length
   private let search = Search()
   private let sorter = Sorter()
   private let throttler = Throttler(minimumDelay: 0.2)
+  private let pageSize = 200
+  private let databaseSearchLimit = 5_000
+
+  @ObservationIgnored private var canLoadMore = true
+  @ObservationIgnored private var isLoadingMore = false
 
   @ObservationIgnored
   private var sessionLog: [Int: HistoryItem] = [:]
@@ -103,8 +122,23 @@ class History: ItemsContainer { // swiftlint:disable:this type_body_length
 
   @MainActor
   func load() async throws {
-    let descriptor = FetchDescriptor<HistoryItem>()
-    let results = try Storage.shared.context.fetch(descriptor)
+    let results: [HistoryItem]
+    if Defaults[.unlimitedPlainTextMode] {
+      let pinned = try Storage.shared.context.fetch(
+        FetchDescriptor<HistoryItem>(predicate: #Predicate { $0.pin != nil })
+      )
+      var recentDescriptor = FetchDescriptor<HistoryItem>(
+        predicate: #Predicate { $0.pin == nil },
+        sortBy: [SortDescriptor(\.lastCopiedAt, order: .reverse)]
+      )
+      recentDescriptor.fetchLimit = pageSize
+      let recent = try Storage.shared.context.fetch(recentDescriptor)
+      results = pinned + recent
+      canLoadMore = recent.count == pageSize
+    } else {
+      results = try Storage.shared.context.fetch(FetchDescriptor<HistoryItem>())
+      canLoadMore = false
+    }
     all = sorter.sort(results).map { HistoryItemDecorator($0) }
     items = all
 
@@ -114,6 +148,58 @@ class History: ItemsContainer { // swiftlint:disable:this type_body_length
     // Ensure that panel size is proper *after* loading all items.
     Task {
       AppState.shared.popup.needsResize = true
+    }
+  }
+
+  @MainActor
+  func loadMore() {
+    guard Defaults[.unlimitedPlainTextMode], searchQuery.isEmpty, canLoadMore, !isLoadingMore else { return }
+    guard let cursor = all.compactMap({ $0.isUnpinned ? $0.item.lastCopiedAt : nil }).min() else { return }
+
+    isLoadingMore = true
+    defer { isLoadingMore = false }
+
+    var descriptor = FetchDescriptor<HistoryItem>(
+      predicate: #Predicate { $0.pin == nil && $0.lastCopiedAt < cursor },
+      sortBy: [SortDescriptor(\.lastCopiedAt, order: .reverse)]
+    )
+    descriptor.fetchLimit = pageSize
+
+    do {
+      let results = try Storage.shared.context.fetch(descriptor)
+      let existingItems = Dictionary(uniqueKeysWithValues: all.map { ($0.item.persistentModelID, $0) })
+      let additions = results.filter { existingItems[$0.persistentModelID] == nil }
+      all = sorter.sort(all.map(\.item) + additions).map {
+        existingItems[$0.persistentModelID] ?? HistoryItemDecorator($0)
+      }
+      items = all
+      canLoadMore = results.count == pageSize
+      updateShortcuts()
+    } catch {
+      logger.error("Failed to load more history: \(String(reflecting: error))")
+    }
+  }
+
+  @MainActor
+  private func databaseSearchCandidates(for query: String) -> [HistoryItemDecorator] {
+    var descriptor: FetchDescriptor<HistoryItem>
+    if Defaults[.searchMode] == .exact {
+      descriptor = FetchDescriptor<HistoryItem>(
+        predicate: #Predicate { $0.title.localizedStandardContains(query) },
+        sortBy: [SortDescriptor(\.lastCopiedAt, order: .reverse)]
+      )
+    } else {
+      descriptor = FetchDescriptor<HistoryItem>(
+        sortBy: [SortDescriptor(\.lastCopiedAt, order: .reverse)]
+      )
+    }
+    descriptor.fetchLimit = databaseSearchLimit
+
+    do {
+      return try Storage.shared.context.fetch(descriptor).map { HistoryItemDecorator($0) }
+    } catch {
+      logger.error("Failed to search history: \(String(reflecting: error))")
+      return all
     }
   }
 
