@@ -1,11 +1,8 @@
 import AppKit
 
 struct Accessibility {
-  private static var allowed: Bool { AXIsProcessTrustedWithOptions(nil) }
-
-  static func check() {
-    guard !allowed else {
-      return
-    }
+  static func check(prompt: Bool = true) -> Bool {
+    let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: prompt] as CFDictionary
+    return AXIsProcessTrustedWithOptions(options)
   }
 }
