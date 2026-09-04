@@ -50,6 +50,7 @@ class Popup {
   }
 
   private var eventsMonitor: Any?
+  private(set) var previousApplication: NSRunningApplication?
 
   private var state: PopupState = .toggle
 
@@ -78,7 +79,15 @@ class Popup {
   }
 
   func open(height: CGFloat, at popupPosition: PopupPosition = Defaults[.popupPosition]) {
+    if let frontmostApplication = NSWorkspace.shared.frontmostApplication,
+       frontmostApplication.bundleIdentifier != Bundle.main.bundleIdentifier {
+      previousApplication = frontmostApplication
+    }
     AppState.shared.appDelegate?.panel.open(height: height, at: popupPosition)
+  }
+
+  func restorePreviousApplication() {
+    previousApplication?.activate(options: [.activateIgnoringOtherApps])
   }
 
   func reset() {

@@ -110,8 +110,20 @@ class Clipboard {
   }
 
   // Based on https://github.com/Clipy/Clipy/blob/develop/Clipy/Sources/Services/PasteService.swift.
+  @MainActor
   func paste() {
     guard Accessibility.check() else { return }
+
+    // Closing a non-activating panel and restoring focus are asynchronous on
+    // recent macOS versions. Explicitly reactivate the app that owned focus,
+    // then post the paste chord after the focus transition has completed.
+    AppState.shared.popup.restorePreviousApplication()
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+      self.postPasteShortcut()
+    }
+  }
+
+  private func postPasteShortcut() {
 
     // Add flag that left/right modifier key has been pressed.
     // See https://github.com/TermiT/Flycut/pull/18 for details.
