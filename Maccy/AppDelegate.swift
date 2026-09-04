@@ -35,6 +35,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   private var statusItemVisibilityObserver: NSKeyValueObservation?
 
   func applicationWillFinishLaunching(_ notification: Notification) { // swiftlint:disable:this function_body_length
+    if !Self.isTesting {
+      do {
+        try HistoryBackup.applyPendingRestoreIfNeeded()
+      } catch {
+        let alert = NSAlert(error: error)
+        alert.runModal()
+      }
+    }
+
     #if DEBUG
     if Self.isTesting {
       SPUUpdater(hostBundle: Bundle.main,

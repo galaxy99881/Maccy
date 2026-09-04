@@ -1,6 +1,7 @@
-import SwiftUI
+import AppKit
 import Defaults
 import Settings
+import SwiftUI
 
 struct StorageSettingsPane: View {
   @Observable
@@ -145,9 +146,67 @@ struct StorageSettingsPane: View {
         .labelsHidden()
         .frame(width: 160, alignment: .leading)
         .help(Text("SortByTooltip", tableName: "StorageSettings"))
-        .accessibilityLabel(Text("SortBy", tableName: "StorageSettings"))
+          .accessibilityLabel(Text("SortBy", tableName: "StorageSettings"))
+      }
+
+      Settings.Section(label: { Text("Backup", tableName: "StorageSettings") }) {
+        HStack {
+          Button(action: exportBackup) {
+            Text("ExportBackup", tableName: "StorageSettings")
+          }
+          Button(action: importBackup) {
+            Text("ImportBackup", tableName: "StorageSettings")
+          }
+        }
+        Text("BackupDescription", tableName: "StorageSettings")
+          .controlSize(.small)
+          .foregroundStyle(.gray)
       }
     }
+  }
+
+  private func exportBackup() {
+    do {
+      guard let url = try HistoryBackup.export() else { return }
+      showAlert(
+        title: NSLocalizedString("BackupExported", tableName: "StorageSettings", comment: ""),
+        message: url.path
+      )
+    } catch {
+      NSAlert(error: error).runModal()
+    }
+  }
+
+  private func importBackup() {
+    let confirmation = NSAlert()
+    confirmation.messageText = NSLocalizedString("ImportConfirmationTitle", tableName: "StorageSettings", comment: "")
+    confirmation.informativeText = NSLocalizedString(
+      "ImportConfirmationMessage",
+      tableName: "StorageSettings",
+      comment: ""
+    )
+    confirmation.alertStyle = .warning
+    confirmation.addButton(withTitle: NSLocalizedString("Continue", tableName: "StorageSettings", comment: ""))
+    confirmation.addButton(withTitle: NSLocalizedString("Cancel", tableName: "StorageSettings", comment: ""))
+    guard confirmation.runModal() == .alertFirstButtonReturn else { return }
+
+    do {
+      guard try HistoryBackup.stageImport() else { return }
+      showAlert(
+        title: NSLocalizedString("ImportReady", tableName: "StorageSettings", comment: ""),
+        message: NSLocalizedString("ImportReadyMessage", tableName: "StorageSettings", comment: "")
+      )
+      NSApp.terminate(nil)
+    } catch {
+      NSAlert(error: error).runModal()
+    }
+  }
+
+  private func showAlert(title: String, message: String) {
+    let alert = NSAlert()
+    alert.messageText = title
+    alert.informativeText = message
+    alert.runModal()
   }
 }
 
